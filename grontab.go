@@ -41,6 +41,7 @@ var grontabConfiguration Config
 
 // the cron instance
 var c *cron.Cron
+var db = new(storm.DB)
 
 // Init starts the grontab daemon and setup the persistency
 func Init(config Config) {
@@ -49,78 +50,85 @@ func Init(config Config) {
 	// setup the configuration
 	grontabConfiguration = config
 
-	// init the jobs data structure
-	db, err := storm.Open(grontabConfiguration.PersistencePath)
+	var err error
+	db, err = storm.Open(grontabConfiguration.PersistencePath)
 	if err != nil {
 		log.Panic("Error opening Db")
 	}
-	defer db.Close()
 
+	// create a new cron instance
 	c = cron.New()
 
 	// get keys in the storage
-	keys, err2 := getKeys(db, grontabConfiguration.BucketName)
+	keys, err2 := getKeys()
 	if err2 != nil {
 		log.Println("No elements in the Persistence Storage")
 	} else {
 		log.Println("Found Elements in the Persistence Storage, restarting them ...")
-	}
 
-	// restart jobs from the persistent storage
-	// the worker func gets the jobgroup for that gid schedule
-	for _, v := range keys {
+		// restart jobs from the persistent storage
+		// the worker func gets the jobgroup for that gid schedule
+		for _, v := range keys {
 
-		var jg map[string]string
-		err = db.Get(grontabConfiguration.BucketName, v, &jg)
-		if err != nil {
-			log.Panic("Error Getting object from storage for gid: " + v)
+			var jg map[string]string
+			err := db.Get(grontabConfiguration.BucketName, v, &jg)
+			if err != nil {
+				log.Panic("Error Getting object from storage for gid: " + v)
+			}
+
+			worker := workerFuncGen(v)
+			c.AddFunc(v, worker)
 		}
-		worker := workerFuncGen(v, jg)
-		c.AddFunc(v, worker)
 	}
 
+}
+
+// Start starts a the grontab engine
+func Start() {
 	// startup a new cron routine
 	go c.Start()
-
 }
 
 // Add adds Job to a Schedule String
 func Add(gid string, task Job) string {
-	db, err := storm.Open(grontabConfiguration.PersistencePath)
-	if err != nil {
-		log.Panic("Error opening Db")
-	}
-	defer db.Close()
 
 	// empty jobgroup to be filled
 	var jg map[string]string
 
-	err = db.Get(grontabConfiguration.BucketName, gid, &jg)
+	err := db.Get(grontabConfiguration.BucketName, gid, &jg)
 	if err != nil {
+		log.Printf(cyan("New Gid Cron Schedule, a new entry will be created"))
+		// new gid schedule, so initialize an empty jobgroup of this new gid
+		jg = make(map[string]string)
+
 		// this is a new gid, so a new schedule
 		// generate a func responsible to run that gid
-		worker := workerFuncGen(gid, jg)
+		worker := workerFuncGen(gid)
+
 		// and add that func to the cron routine
 		c.AddFunc(gid, worker)
-		// new key so initialize its jobgroup
-		jg = make(map[string]string)
 	}
 
 	taskAlreadyExists := false
 	var taskKey string
 	for k, v := range jg {
-		if v == task.Task {
+		if v == task.Task || k == task.Jid {
 			taskAlreadyExists = true
 			taskKey = k
 			break
 		}
 	}
 	if !taskAlreadyExists {
-		// insert the job at its corresponding jid
-		task.Jid = fmt.Sprintf("%s", uuid.NewV4())
+		// insert the job at its correspondoing jid
+
+		// create a unique Jid if not specified
+		if task.Jid == "" {
+			task.Jid = fmt.Sprintf("%s", uuid.NewV4())
+		}
 		jg[task.Jid] = task.Task
+
 		// rewrite the updated jobgroup into the storage
-		err = db.Set(grontabConfiguration.BucketName, gid, jg)
+		err := db.Set(grontabConfiguration.BucketName, gid, jg)
 		if err != nil {
 			log.Panic("Error Putting object in storage")
 		}
@@ -135,15 +143,10 @@ func Add(gid string, task Job) string {
 
 // Remove removes a job inside a specific Schedule String (aka jobgroup)
 func Remove(gid string, jid string) {
-	db, err := storm.Open(grontabConfiguration.PersistencePath)
-	if err != nil {
-		log.Panic("Error opening Db")
-	}
-	defer db.Close()
 
 	// gets the jobgroup for that gid
 	var jg map[string]string
-	err = db.Get(grontabConfiguration.BucketName, gid, &jg)
+	err := db.Get(grontabConfiguration.BucketName, gid, &jg)
 	if err != nil {
 		log.Panic("Error Getting object from storage")
 	}
@@ -162,17 +165,23 @@ func Remove(gid string, jid string) {
 
 // ###### FUNCTIONS ######
 
-func workerFuncGen(gid string, jg map[string]string) func() {
+func workerFuncGen(gid string) func() {
 	// it returns a worker function
 	return func() {
-
 		jobGroupID := fmt.Sprintf("%s", uuid.NewV4())
 		log.Printf(green("RUNN JG(%s)[%s]"), jobGroupID, gid)
+
+		var jg map[string]string
+		err := db.Get(grontabConfiguration.BucketName, gid, &jg)
+		if err != nil {
+			log.Panic("Error Getting object from storage")
+		}
 
 		var wg sync.WaitGroup
 		// the worker func takes one job at a time from the jobgroup
 		for _, commandString := range jg {
 			log.Printf(green("EXEC JG(%s)[%s]: %s"), jobGroupID, gid, commandString)
+
 			// split transform the commandstring into a actual command
 			args := strings.Fields(commandString)
 
@@ -197,12 +206,12 @@ func workerFuncGen(gid string, jg map[string]string) func() {
 }
 
 // return keys of all the elements inside a bucket
-func getKeys(db *storm.DB, bkt string) ([]string, error) {
+func getKeys() ([]string, error) {
 	var keys []string
 	err := db.Bolt.View(func(tx *bolt.Tx) error {
-		b := tx.Bucket([]byte(bkt))
+		b := tx.Bucket([]byte(grontabConfiguration.BucketName))
 		if b == nil {
-			return fmt.Errorf("no bucket " + bkt + " found")
+			return fmt.Errorf("No Storage bucket " + grontabConfiguration.BucketName + " found")
 		}
 		c := b.Cursor()
 		for k, _ := c.First(); k != nil; k, _ = c.Next() {
