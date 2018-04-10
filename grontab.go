@@ -1,18 +1,24 @@
 package grontab
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"fmt"
+	"io"
 	"log"
 	"os/exec"
 	"strings"
 	"sync"
 
+	"github.com/wgliang/cron"
+
 	"github.com/asdine/storm"
 	"github.com/boltdb/bolt"
 	"github.com/fatih/color"
-	"github.com/robfig/cron"
-	uuid "github.com/satori/go.uuid"
 )
+
+// ShortLen is the Job id len
+const ShortLen = 32
 
 // Job defines a job
 type Job struct {
@@ -43,6 +49,9 @@ var grontabConfiguration Config
 var c *cron.Cron
 var db = new(storm.DB)
 
+// a map that keeps track of the gid and its corresponding ugid
+var ugidTable = make(map[string]string)
+
 // Init starts the grontab daemon and setup the persistency
 func Init(config Config) {
 	log.Println("Hi, this is grontab setting up")
@@ -68,16 +77,21 @@ func Init(config Config) {
 
 		// restart jobs from the persistent storage
 		// the worker func gets the jobgroup for that gid schedule
-		for _, v := range keys {
+		for _, gid := range keys {
 
 			var jg map[string]string
-			err := db.Get(grontabConfiguration.BucketName, v, &jg)
+			err := db.Get(grontabConfiguration.BucketName, gid, &jg)
 			if err != nil {
-				log.Panic("Error Getting object from storage for gid: " + v)
+				log.Panic("Error Getting object from storage for gid: " + gid)
 			}
 
-			worker := workerFuncGen(v)
-			c.AddFunc(v, worker)
+			worker := workerFuncGen(gid)
+			ugid := fmt.Sprintf("%s", generateID())
+			err = c.AddFunc(gid, worker, ugid)
+			if err != nil {
+				log.Println(err)
+			}
+			ugidTable[gid] = ugid
 		}
 	}
 
@@ -86,7 +100,7 @@ func Init(config Config) {
 // Start starts a the grontab engine
 func Start() {
 	// startup a new cron routine
-	go c.Start()
+	c.Start()
 }
 
 // Add adds Job to a Schedule String
@@ -95,8 +109,12 @@ func Add(gid string, task Job) string {
 	// empty jobgroup to be filled
 	var jg map[string]string
 
-	err := db.Get(grontabConfiguration.BucketName, gid, &jg)
-	if err != nil {
+	db.Get(grontabConfiguration.BucketName, gid, &jg)
+
+	// check if the key already exists in the db
+	if _, ok := jg[gid]; !ok {
+		// WARNING: keys stay there also if values
+
 		log.Printf(cyan("New Gid Cron Schedule, a new entry will be created"))
 		// new gid schedule, so initialize an empty jobgroup of this new gid
 		jg = make(map[string]string)
@@ -106,7 +124,12 @@ func Add(gid string, task Job) string {
 		worker := workerFuncGen(gid)
 
 		// and add that func to the cron routine
-		c.AddFunc(gid, worker)
+		ugid := fmt.Sprintf("%s", generateID())
+		err := c.AddFunc(gid, worker, ugid)
+		if err != nil {
+			log.Println(err)
+		}
+		ugidTable[gid] = ugid
 	}
 
 	taskAlreadyExists := false
@@ -123,7 +146,7 @@ func Add(gid string, task Job) string {
 
 		// create a unique Jid if not specified
 		if task.Jid == "" {
-			task.Jid = fmt.Sprintf("%s", uuid.NewV4())
+			task.Jid = fmt.Sprintf("%s", generateID())
 		}
 		jg[task.Jid] = task.Task
 
@@ -141,26 +164,118 @@ func Add(gid string, task Job) string {
 
 }
 
-// Remove removes a job inside a specific Schedule String (aka jobgroup)
-func Remove(gid string, jid string) {
+// Remove removes a job
+func Remove(jid string) {
 
-	// gets the jobgroup for that gid
-	var jg map[string]string
-	err := db.Get(grontabConfiguration.BucketName, gid, &jg)
+	gid, exists := find(jid)
+	if exists {
+		// gets the jobgroup for that gid
+		var jg map[string]string
+		err := db.Get(grontabConfiguration.BucketName, gid, &jg)
+		if err != nil {
+			log.Panic("Error Getting object from storage")
+		}
+
+		// removes a job with the specified jid from the jobgroup with specified gid
+		toBeDeletedJob := jg[jid]
+		// WARNING: values are deleted but keys stay there
+		delete(jg, jid)
+
+		// rewrite the updated jobgroup into the storage
+		err = db.Set(grontabConfiguration.BucketName, gid, jg)
+		if err != nil {
+			log.Panic("Error Putting object in storage")
+		}
+
+		// stop the running schedule (gid/ugid)
+		c.Remove(ugidTable[gid])
+		// renove mapping from the ugidTable
+		delete(ugidTable, gid)
+
+		log.Printf(yellow("REM JOB : {%s %s} from ['%s']"), jid, toBeDeletedJob, gid)
+	}
+}
+
+// Update updates a running job
+func Update(jid string, schedule string, cmd string) {
+
+	gid, exist := find(jid)
+	if exist {
+		zjg := make(map[string]string)
+		err := db.Get(grontabConfiguration.BucketName, gid, &zjg)
+		if err != nil {
+			log.Panic("Error Updating Job, Error Getting object from storage for gid: " + gid)
+		}
+
+		delete(zjg, jid)
+
+		err = db.Delete(grontabConfiguration.BucketName, gid)
+		if err != nil {
+			log.Panic("Error Deleting object in storage\n")
+		}
+
+		err = db.Set(grontabConfiguration.BucketName, gid, zjg)
+		if err != nil {
+			log.Panic("Error Putting object in storage\n")
+		}
+
+		njg := make(map[string]string)
+		db.Get(grontabConfiguration.BucketName, schedule, &njg)
+		njg[jid] = cmd
+
+		err = db.Set(grontabConfiguration.BucketName, schedule, njg)
+		if err != nil {
+			log.Panic("Error Putting object in storage\n")
+		}
+
+		// stop the running schedule (gid/ugid)
+		c.Remove(ugidTable[gid])
+		// remove mapping from the ugidTable
+		delete(ugidTable, gid)
+
+		// and add that func to the cron routine
+		worker := workerFuncGen(schedule)
+		ugid := fmt.Sprintf("%s", generateID())
+		c.AddFunc(schedule, worker, ugid)
+		// update the ugidTable
+		ugidTable[schedule] = ugid
+
+		log.Printf(yellow("UPDT JOB : {%s %s} to ['%s']"), jid, cmd, schedule)
+	}
+}
+
+// List returns a list of the running schedules with their jobs
+func List() map[string]map[string]string {
+
+	jobs := make(map[string]map[string]string)
+	keys, err := getKeys()
 	if err != nil {
-		log.Panic("Error Getting object from storage")
+		log.Println("No elements in the Persistence Storage")
+	} else {
+		for _, gid := range keys {
+			var jg map[string]string
+			err := db.Get(grontabConfiguration.BucketName, gid, &jg)
+			if err != nil {
+				log.Panic("Error Getting object from storage for gid: " + gid)
+			}
+			jobs[gid] = jg
+		}
 	}
 
-	// removes a job with the specified jid from the jobgroup with specified gid
-	toBeDeletedJob := jg[jid]
-	delete(jg, jid)
+	return jobs
+}
 
-	// rewrite the updated jobgroup into the storage
-	err = db.Set(grontabConfiguration.BucketName, gid, jg)
-	if err != nil {
-		log.Panic("Error Putting object in storage")
+// PrintJobs prints a list of the running schedules with their jobs
+func PrintJobs() {
+
+	schedules := List()
+	fmt.Printf("                ID                      SCHEDULE           COMMAND\n")
+
+	for gid, jobslist := range schedules {
+		for k, w := range jobslist {
+			fmt.Printf("%s   ["+green("%s")+"]   %s\n", k, gid, w)
+		}
 	}
-	log.Printf(yellow("REM JOB : {%s %s} from ['%s']"), jid, toBeDeletedJob, gid)
 }
 
 // ###### FUNCTIONS ######
@@ -168,7 +283,7 @@ func Remove(gid string, jid string) {
 func workerFuncGen(gid string) func() {
 	// it returns a worker function
 	return func() {
-		jobGroupID := fmt.Sprintf("%s", uuid.NewV4())
+		jobGroupID := fmt.Sprintf("%s", generateID())
 		log.Printf(green("RUNN JG(%s)[%s]"), jobGroupID, gid)
 
 		var jg map[string]string
@@ -228,4 +343,52 @@ func getKeys() ([]string, error) {
 		return nil, err
 	}
 	return keys, nil
+}
+
+func find(jid string) (string, bool) {
+	keys, err := getKeys()
+	if err != nil {
+		log.Panic("Error listing keys from storage")
+	}
+
+	var jg map[string]string
+	for _, gid := range keys {
+
+		err := db.Get(grontabConfiguration.BucketName, gid, &jg)
+		if err != nil {
+			log.Panic("Error Getting object from storage for gid: " + gid)
+		}
+		for k := range jg {
+			if jid == k {
+				return gid, true
+			}
+		}
+
+	}
+	return "", false
+}
+
+// credits: github.com/moby/moby/pkg/stringid
+func generateID() string {
+	b := make([]byte, 32)
+	r := rand.Reader
+	for {
+		if _, err := io.ReadFull(r, b); err != nil {
+			panic(err) // This shouldn't happen
+		}
+		id := hex.EncodeToString(b)
+		// if we try to parse the truncated for as an int and we don't have
+		// an error then the value is all numeric and causes issues when
+		// used as a hostname. ref #3869
+		return truncateID(id)
+	}
+}
+
+// credits: github.com/moby/moby/pkg/stringid
+func truncateID(id string) string {
+	trimTo := ShortLen
+	if len(id) < ShortLen {
+		trimTo = len(id)
+	}
+	return id[:trimTo]
 }
