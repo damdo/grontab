@@ -1,10 +1,7 @@
 package grontab
 
 import (
-	"crypto/rand"
-	"encoding/hex"
 	"fmt"
-	"io"
 	"log"
 	"os/exec"
 	"strings"
@@ -14,23 +11,21 @@ import (
 
 	"github.com/asdine/storm"
 	"github.com/boltdb/bolt"
+	"github.com/damdo/grontab/stringid"
 	"github.com/fatih/color"
 )
-
-// ShortLen is the Job id len
-const ShortLen = 32
-
-// Job defines a job
-type Job struct {
-	Jid  string
-	Task string
-}
 
 // Config defines a configuration for grontab
 type Config struct {
 	BucketName      string
 	Persistence     bool
 	PersistencePath string
+}
+
+// Job defines a job
+type Job struct {
+	Jid  string
+	Task string
 }
 
 // Jobsgroup is a map of <jid(string) : task(string)>
@@ -86,7 +81,7 @@ func Init(config Config) {
 			}
 
 			worker := workerFuncGen(gid)
-			ugid := fmt.Sprintf("%s", generateID())
+			ugid := fmt.Sprintf("%s", stringid.GenerateID())
 			err = c.AddFunc(gid, worker, ugid)
 			if err != nil {
 				log.Println(err)
@@ -124,7 +119,7 @@ func Add(gid string, task Job) string {
 		worker := workerFuncGen(gid)
 
 		// and add that func to the cron routine
-		ugid := fmt.Sprintf("%s", generateID())
+		ugid := fmt.Sprintf("%s", stringid.GenerateID())
 		err := c.AddFunc(gid, worker, ugid)
 		if err != nil {
 			log.Println(err)
@@ -146,7 +141,7 @@ func Add(gid string, task Job) string {
 
 		// create a unique Jid if not specified
 		if task.Jid == "" {
-			task.Jid = fmt.Sprintf("%s", generateID())
+			task.Jid = fmt.Sprintf("%s", stringid.GenerateID())
 		}
 		jg[task.Jid] = task.Task
 
@@ -235,7 +230,7 @@ func Update(jid string, schedule string, cmd string) {
 
 		// and add that func to the cron routine
 		worker := workerFuncGen(schedule)
-		ugid := fmt.Sprintf("%s", generateID())
+		ugid := fmt.Sprintf("%s", stringid.GenerateID())
 		c.AddFunc(schedule, worker, ugid)
 		// update the ugidTable
 		ugidTable[schedule] = ugid
@@ -283,7 +278,7 @@ func PrintJobs() {
 func workerFuncGen(gid string) func() {
 	// it returns a worker function
 	return func() {
-		jobGroupID := fmt.Sprintf("%s", generateID())
+		jobGroupID := fmt.Sprintf("%s", stringid.GenerateID())
 		log.Printf(green("RUNN JG(%s)[%s]"), jobGroupID, gid)
 
 		var jg map[string]string
@@ -366,29 +361,4 @@ func find(jid string) (string, bool) {
 
 	}
 	return "", false
-}
-
-// credits: github.com/moby/moby/pkg/stringid
-func generateID() string {
-	b := make([]byte, 32)
-	r := rand.Reader
-	for {
-		if _, err := io.ReadFull(r, b); err != nil {
-			panic(err) // This shouldn't happen
-		}
-		id := hex.EncodeToString(b)
-		// if we try to parse the truncated for as an int and we don't have
-		// an error then the value is all numeric and causes issues when
-		// used as a hostname. ref #3869
-		return truncateID(id)
-	}
-}
-
-// credits: github.com/moby/moby/pkg/stringid
-func truncateID(id string) string {
-	trimTo := ShortLen
-	if len(id) < ShortLen {
-		trimTo = len(id)
-	}
-	return id[:trimTo]
 }
