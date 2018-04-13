@@ -7,11 +7,11 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/damdo/randid"
 	"github.com/wgliang/cron"
 
 	"github.com/asdine/storm"
 	"github.com/boltdb/bolt"
-	"github.com/damdo/grontab/stringid"
 	"github.com/fatih/color"
 )
 
@@ -81,7 +81,7 @@ func Init(config Config) {
 			}
 
 			worker := workerFuncGen(gid)
-			ugid := fmt.Sprintf("%s", stringid.GenerateID())
+			ugid := fmt.Sprintf("%s", randid.ID())
 			err = c.AddFunc(gid, worker, ugid)
 			if err != nil {
 				log.Println(err)
@@ -119,7 +119,7 @@ func Add(gid string, task Job) string {
 		worker := workerFuncGen(gid)
 
 		// and add that func to the cron routine
-		ugid := fmt.Sprintf("%s", stringid.GenerateID())
+		ugid := fmt.Sprintf("%s", randid.ID())
 		err := c.AddFunc(gid, worker, ugid)
 		if err != nil {
 			log.Println(err)
@@ -136,12 +136,13 @@ func Add(gid string, task Job) string {
 			break
 		}
 	}
+
 	if !taskAlreadyExists {
 		// insert the job at its correspondoing jid
 
 		// create a unique Jid if not specified
 		if task.Jid == "" {
-			task.Jid = fmt.Sprintf("%s", stringid.GenerateID())
+			task.Jid = fmt.Sprintf("%s", randid.ID())
 		}
 		jg[task.Jid] = task.Task
 
@@ -156,7 +157,6 @@ func Add(gid string, task Job) string {
 	}
 	log.Printf("Job %s already Running at ['%s']\n", task, gid)
 	return taskKey
-
 }
 
 // Remove removes a job
@@ -230,7 +230,7 @@ func Update(jid string, schedule string, cmd string) {
 
 		// and add that func to the cron routine
 		worker := workerFuncGen(schedule)
-		ugid := fmt.Sprintf("%s", stringid.GenerateID())
+		ugid := fmt.Sprintf("%s", randid.ID())
 		c.AddFunc(schedule, worker, ugid)
 		// update the ugidTable
 		ugidTable[schedule] = ugid
@@ -273,12 +273,11 @@ func PrintJobs() {
 	}
 }
 
-// ###### FUNCTIONS ######
-
+// Generates the functions that will be executed at each cron schedule
 func workerFuncGen(gid string) func() {
 	// it returns a worker function
 	return func() {
-		jobGroupID := fmt.Sprintf("%s", stringid.GenerateID())
+		jobGroupID := fmt.Sprintf("%s", randid.ID())
 		log.Printf(green("RUNN JG(%s)[%s]"), jobGroupID, gid)
 
 		var jg map[string]string
