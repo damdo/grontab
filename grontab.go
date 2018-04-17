@@ -8,7 +8,7 @@ import (
 	"sync"
 
 	"github.com/asdine/storm"
-	"github.com/boltdb/bolt"
+	"github.com/coreos/bbolt"
 	"github.com/damdo/randid"
 	"github.com/fatih/color"
 	"github.com/pkg/errors"
