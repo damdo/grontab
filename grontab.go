@@ -34,7 +34,7 @@ type jobDetails struct {
 	Enabled bool
 }
 
-// Jobsgroup is a map of <jid(string) : task(string)>
+// Jobsgroup is a map of <jid(string) : job{task(string), enabled:(bool)}>
 type Jobsgroup map[string]jobDetails
 
 // log types
