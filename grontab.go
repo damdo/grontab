@@ -24,12 +24,18 @@ type Config struct {
 
 // Job defines a job
 type Job struct {
-	Jid  string
-	Task string
+	ID      string
+	Task    string
+	Enabled bool
+}
+
+type jobDetails struct {
+	Task    string
+	Enabled bool
 }
 
 // Jobsgroup is a map of <jid(string) : task(string)>
-type Jobsgroup map[string]string
+type Jobsgroup map[string]jobDetails
 
 // log types
 var red = color.New(color.FgRed, color.Bold).SprintFunc()
@@ -49,6 +55,49 @@ var ugidTable = make(map[string]string)
 
 // Init starts the grontab daemon and setup the persistency
 func Init(config Config) error {
+	return initialize(config)
+}
+
+// Start starts a the grontab engine
+func Start() {
+	start()
+}
+
+// Add adds Job to a Schedule String
+func Add(schedule string, job Job) (string, error) {
+	return add(job.ID, schedule, jobDetails{Task: job.Task, Enabled: job.Enabled})
+}
+
+// Remove removes a job
+func Remove(id string) error {
+	return remove(id)
+}
+
+// Update updates a running job
+func Update(schedule string, job Job) error {
+	return update(job.ID, schedule, jobDetails{Task: job.Task, Enabled: job.Enabled})
+}
+
+// List returns a list of the running schedules with their jobs
+func List() map[string][]Job {
+	return list()
+}
+
+// PrintJobs prints a list of the running schedules with their jobs
+func PrintJobs() {
+	schedules := List()
+	fmt.Printf("                ID                      ENABLED            SCHEDULE           COMMAND\n")
+
+	for gid, jobslist := range schedules {
+		for _, job := range jobslist {
+			fmt.Printf("%s   ["+green("%s")+"]   %s\n", job.ID, job.Enabled, gid, job.Task)
+		}
+	}
+}
+
+// ##################
+
+func initialize(config Config) error {
 	log.Println("Hi, this is grontab setting up")
 
 	// setup the configuration
@@ -74,7 +123,7 @@ func Init(config Config) error {
 		// the worker func gets the jobgroup for that gid schedule
 		for _, gid := range keys {
 
-			var jg map[string]string
+			var jg map[string]jobDetails
 			err := db.Get(grontabConfiguration.BucketName, gid, &jg)
 			if err != nil {
 				log.Panic("Error Getting object from storage for gid: " + gid)
@@ -93,17 +142,14 @@ func Init(config Config) error {
 
 }
 
-// Start starts a the grontab engine
-func Start() {
+func start() {
 	// startup a new cron routine
 	c.Start()
 }
 
-// Add adds Job to a Schedule String
-func Add(gid string, task Job) (string, error) {
-
+func add(jid string, gid string, task jobDetails) (string, error) {
 	// empty jobgroup to be filled
-	var jg map[string]string
+	var jg map[string]jobDetails
 
 	err := db.Get(grontabConfiguration.BucketName, gid, &jg)
 	// if err != nil means the gid schedule is new and not present in db
@@ -112,7 +158,7 @@ func Add(gid string, task Job) (string, error) {
 
 		// log.Printf(cyan("A new cron schedule will be created for " + gid))
 		// new gid schedule, so initialize an empty jobgroup of this new gid
-		jg = make(map[string]string)
+		jg = make(map[string]jobDetails)
 
 		// this is a new gid, so a new schedule
 		// generate a func responsible to run that gid
@@ -131,7 +177,7 @@ func Add(gid string, task Job) (string, error) {
 	taskAlreadyExists := false
 	var taskKey string
 	for k, v := range jg {
-		if v == task.Task || k == task.Jid {
+		if v.Task == task.Task || k == jid {
 			taskAlreadyExists = true
 			taskKey = k
 			break
@@ -140,11 +186,14 @@ func Add(gid string, task Job) (string, error) {
 
 	if !taskAlreadyExists {
 		// insert the job at its correspondoing jid
-		// create a unique Jid if not specified
-		if task.Jid == "" {
-			task.Jid = fmt.Sprintf("%s", randid.ID())
+		// create a unique jid if not specified
+		if jid == "" {
+			jid = fmt.Sprintf("%s", randid.ID())
 		}
-		jg[task.Jid] = task.Task
+		jg[jid] = jobDetails{
+			Task:    task.Task,
+			Enabled: task.Enabled,
+		}
 
 		// rewrite the updated jobgroup into the storage
 		err := db.Set(grontabConfiguration.BucketName, gid, jg)
@@ -152,25 +201,23 @@ func Add(gid string, task Job) (string, error) {
 			// unable to add schedule in persistent storage
 			return "", errors.Wrap(err, "Error Adding schedule to grontab persistent storage")
 		}
-		log.Printf(green("ADD JOB : %s to ['%s']"), task, gid)
+		log.Printf(green("ADD JOB : {%s %s enabled:%t} to ['%s']"), jid, task.Task, task.Enabled, gid)
 
-		return task.Jid, nil
+		return jid, nil
 	}
 
-	log.Printf("Job %s already Running at ['%s']\n", task, gid)
+	log.Printf("Job %s already Present at ['%s']\n", task.Task, gid)
 	return taskKey, nil
 }
 
-// Remove removes a job
-func Remove(jid string) error {
-
+func remove(jid string) error {
 	gid, exists, err := find(jid)
 	if err != nil {
 		return err
 	}
 	if exists {
 		// gets the jobgroup for that gid
-		var jg map[string]string
+		var jg map[string]jobDetails
 		err := db.Get(grontabConfiguration.BucketName, gid, &jg)
 		if err != nil {
 			log.Panic("Error Getting object from storage")
@@ -190,21 +237,18 @@ func Remove(jid string) error {
 		if err != nil {
 			return err
 		}
-
-		log.Printf(yellow("REM JOB : {%s %s} from ['%s']"), jid, toBeDeletedJob, gid)
+		log.Printf(yellow("REM JOB : {%s %s enabled:%t} from ['%s']"), jid, toBeDeletedJob.Task, toBeDeletedJob.Enabled, gid)
 	}
 	return nil
 }
 
-// Update updates a running job
-func Update(jid string, schedule string, cmd string) error {
-
+func update(jid string, schedule string, task jobDetails) error {
 	gid, exist, err := find(jid)
 	if err != nil {
 		return err
 	}
 	if exist {
-		zjg := make(map[string]string)
+		zjg := make(map[string]jobDetails)
 		err := db.Get(grontabConfiguration.BucketName, gid, &zjg)
 		if err != nil {
 			return errors.Wrap(err, "Error Updating Job "+jid)
@@ -222,9 +266,13 @@ func Update(jid string, schedule string, cmd string) error {
 			return errors.Wrap(err, "Error Updating Job")
 		}
 
-		njg := make(map[string]string)
+		njg := make(map[string]jobDetails)
 		db.Get(grontabConfiguration.BucketName, schedule, &njg)
-		njg[jid] = cmd
+
+		njg[jid] = jobDetails{
+			Task:    task.Task,
+			Enabled: task.Enabled,
+		}
 
 		err = db.Set(grontabConfiguration.BucketName, schedule, njg)
 		if err != nil {
@@ -236,51 +284,46 @@ func Update(jid string, schedule string, cmd string) error {
 			return err
 		}
 
-		// add that func to the cron routine
-		worker := workerFuncGen(schedule)
-		ugid := fmt.Sprintf("%s", randid.ID())
-		c.AddFunc(schedule, worker, ugid)
+		// if the schedule is new start a new cron routine for it
+		if schedule != gid {
+			// add that func to the cron routine
+			worker := workerFuncGen(schedule)
+			ugid := fmt.Sprintf("%s", randid.ID())
+			c.AddFunc(schedule, worker, ugid)
 
-		// update the ugidTable
-		ugidTable[schedule] = ugid
+			// update the ugidTable
+			ugidTable[schedule] = ugid
+		}
 
-		log.Printf(yellow("UPD JOB : {%s %s} to ['%s']"), jid, cmd, schedule)
+		log.Printf(yellow("UPD JOB : {%s %s enabled:%t} to ['%s']"), jid, task.Task, task.Enabled, schedule)
 
+		return nil
 	}
-	return nil
+	return errors.New(red("ERR Grontab: job.ID: '" + jid + "' non provided or doesn't exists"))
 }
 
-// List returns a list of the running schedules with their jobs
-func List() map[string]map[string]string {
-
-	jobs := make(map[string]map[string]string)
+func list() map[string][]Job {
+	jobs := make(map[string][]Job)
 	keys, err := getKeys()
 	if err != nil {
 		log.Println("No elements in the Persistence Storage")
 	} else {
 		for _, gid := range keys {
-			var jg map[string]string
+			var jg map[string]jobDetails
 			err := db.Get(grontabConfiguration.BucketName, gid, &jg)
 			if err != nil {
 				log.Panic("Error Getting object from storage for gid: " + gid)
 			}
-			jobs[gid] = jg
+
+			var scheduleJobs []Job
+			for k, v := range jg {
+				scheduleJobs = append(scheduleJobs, Job{ID: k, Task: v.Task, Enabled: v.Enabled})
+			}
+			jobs[gid] = scheduleJobs
 		}
 	}
 
 	return jobs
-}
-
-// PrintJobs prints a list of the running schedules with their jobs
-func PrintJobs() {
-	schedules := List()
-	fmt.Printf("                ID                      SCHEDULE           COMMAND\n")
-
-	for gid, jobslist := range schedules {
-		for k, w := range jobslist {
-			fmt.Printf("%s   ["+green("%s")+"]   %s\n", k, gid, w)
-		}
-	}
 }
 
 // Generates the functions that will be executed at each cron schedule
@@ -290,7 +333,8 @@ func workerFuncGen(gid string) func() {
 		jobGroupID := fmt.Sprintf("%s", randid.ID())
 		log.Printf(green("RUNN JG(%s)[%s]"), jobGroupID, gid)
 
-		var jg map[string]string
+		var jg map[string]jobDetails
+
 		err := db.Get(grontabConfiguration.BucketName, gid, &jg)
 		if err != nil {
 			log.Panic("Error Putting object in storage\n")
@@ -298,26 +342,32 @@ func workerFuncGen(gid string) func() {
 
 		var wg sync.WaitGroup
 		// the worker func takes one job at a time from the jobgroup
-		for jid, commandString := range jg {
-			log.Printf(green("EXEC JG(%s)[%s][%s]: %s"), jobGroupID, gid, jid, commandString)
+		for jid, task := range jg {
 
-			// split transform the commandstring into a actual command
-			args := strings.Fields(commandString)
+			commandString := task.Task
+			isTaskEnabled := task.Enabled
 
-			// executes the command in a goroutine
-			errMessage := "There was an error executing command: " + commandString + " --> "
-			wg.Add(1)
-			go func() {
-				cmdOut, err := exec.Command(args[0], args[1:]...).Output()
+			if isTaskEnabled {
+				log.Printf(green("EXEC JG(%s)[%s][%s]: %s"), jobGroupID, gid, jid, commandString)
 
-				if err != nil {
-					log.Printf(red(errMessage), err)
-				}
+				// split transform the commandstring into a actual command
+				args := strings.Fields(commandString)
 
-				log.Printf(cyan("OUTP JG(%s)[%s][%s]: %s"), jobGroupID,
-					gid, jid, strings.Replace(string(cmdOut), "\n", " <br> ", -1))
-				wg.Done()
-			}()
+				// executes the command in a goroutine
+				errMessage := "There was an error executing command: " + commandString + " --> "
+				wg.Add(1)
+				go func() {
+					cmdOut, err := exec.Command(args[0], args[1:]...).Output()
+
+					if err != nil {
+						log.Printf(red(errMessage), err)
+					}
+
+					log.Printf(cyan("OUTP JG(%s)[%s][%s]: %s"), jobGroupID,
+						gid, jid, strings.Replace(string(cmdOut), "\n", " <br> ", -1))
+					wg.Done()
+				}()
+			}
 		}
 		wg.Wait()
 		log.Printf(green("ENDD JG(%s)[%s]"), jobGroupID, gid)
@@ -356,7 +406,7 @@ func find(jid string) (string, bool, error) {
 
 	}
 
-	var jg map[string]string
+	var jg map[string]jobDetails
 	for _, gid := range keys {
 
 		err := db.Get(grontabConfiguration.BucketName, gid, &jg)
@@ -377,7 +427,7 @@ func find(jid string) (string, bool, error) {
 func garbageCollectSchedule(gid string) error {
 
 	// check if it is possible to garbagecollect the schedule because empty
-	var jgz map[string]string
+	var jgz map[string]jobDetails
 	err := db.Get(grontabConfiguration.BucketName, gid, &jgz)
 	if err != nil {
 		return errors.Wrap(err, "Error during garbagecollection of potentially unhused gid")

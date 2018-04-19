@@ -17,8 +17,8 @@
 [[projects]]
   name = "github.com/coreos/bbolt"
   packages = ["."]
-  revision = "583e8937c61f1af6513608ccc75c97b6abdf4ff9"
-  version = "v1.3.0"
+  revision = "48ea1b39c25fc1bab3506fbc712ecbaa842c4d2d"
+  version = "v1.3.1-coreos.6"
 
 [[projects]]
   branch = "master"
@@ -59,11 +59,11 @@
   branch = "master"
   name = "golang.org/x/sys"
   packages = ["unix"]
-  revision = "b126b21c05a91c856b027c16779c12e3bf236954"
+  revision = "3ccc7e5779793fd54564baf60c51bf017955e0ba"
 
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "077120911de00258e8f35273d83d446a5e399f9b239c251b6537b63dcc911d57"
+  inputs-digest = "5db63020dfd5e0ed7d82bc2e20fcd994cc1c2f56f85c2ea6e7a905207bc6f375"
   solver-name = "gps-cdcl"
   solver-version = 1
