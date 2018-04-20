@@ -354,7 +354,7 @@ func workerFuncGen(gid string) func() {
 				args := strings.Fields(commandString)
 
 				// executes the command in a goroutine
-				errMessage := "There was an error executing command: " + commandString + " --> "
+				errMessage := "There was an error executing command: " + commandString + " --> %s "
 				wg.Add(1)
 				go func() {
 					cmdOut, err := exec.Command(args[0], args[1:]...).Output()
