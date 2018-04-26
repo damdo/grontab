@@ -17,9 +17,9 @@ import (
 
 // Config defines a configuration for grontab
 type Config struct {
-	BucketName      string
-	Persistence     bool
-	PersistencePath string
+	BucketName         string
+	PersistencePath    string
+	DisableParallelism bool
 }
 
 // Job defines a job
@@ -341,6 +341,7 @@ func workerFuncGen(gid string) func() {
 		}
 
 		var wg sync.WaitGroup
+		var wg2 sync.WaitGroup
 		// the worker func takes one job at a time from the jobgroup
 		for jid, task := range jg {
 
@@ -356,6 +357,10 @@ func workerFuncGen(gid string) func() {
 				// executes the command in a goroutine
 				errMessage := "There was an error executing command: " + commandString + " --> %s "
 				wg.Add(1)
+				if grontabConfiguration.DisableParallelism {
+					wg2.Add(1)
+				}
+
 				go func() {
 					cmdOut, err := exec.Command(args[0], args[1:]...).Output()
 
@@ -366,7 +371,13 @@ func workerFuncGen(gid string) func() {
 					log.Printf(cyan("OUTP JG(%s)[%s][%s]: %s"), jobGroupID,
 						gid, jid, strings.Replace(string(cmdOut), "\n", " <br> ", -1))
 					wg.Done()
+					if grontabConfiguration.DisableParallelism {
+						wg2.Done()
+					}
 				}()
+				if grontabConfiguration.DisableParallelism {
+					wg2.Wait()
+				}
 			}
 		}
 		wg.Wait()
