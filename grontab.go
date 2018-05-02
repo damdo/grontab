@@ -355,14 +355,14 @@ func workerFuncGen(gid string) func() {
 				args := strings.Fields(commandString)
 
 				// executes the command in a goroutine
-				errMessage := "There was an error executing command: " + commandString + " --> %s args:  %#v"
+				errMessage := "There was an error executing command: " + commandString + " --> %s args: %#v\n"
 				wg.Add(1)
 				if grontabConfiguration.DisableParallelism {
 					wg2.Add(1)
 				}
 
 				go func() {
-					cmdOut, err := exec.Command(args[0], args[1:]...).Output()
+					cmdOut, err := exec.Command(args[0], args[1:]...).CombinedOutput()
 
 					if err != nil {
 						log.Printf(red(errMessage), err, args)
