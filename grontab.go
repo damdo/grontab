@@ -353,10 +353,9 @@ func workerFuncGen(gid string) func() {
 
 				// split transform the commandstring into a actual command
 				args := strings.Fields(commandString)
-				log.Printf("%#v\n", args)
 
 				// executes the command in a goroutine
-				errMessage := "There was an error executing command: " + commandString + " --> %s "
+				errMessage := "There was an error executing command: " + commandString + " --> %s args:  %#v"
 				wg.Add(1)
 				if grontabConfiguration.DisableParallelism {
 					wg2.Add(1)
@@ -366,7 +365,7 @@ func workerFuncGen(gid string) func() {
 					cmdOut, err := exec.Command(args[0], args[1:]...).Output()
 
 					if err != nil {
-						log.Printf(red(errMessage), err)
+						log.Printf(red(errMessage), err, args)
 					}
 
 					log.Printf(cyan("OUTP JG(%s)[%s][%s]: %s"), jobGroupID,
