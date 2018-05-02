@@ -353,6 +353,7 @@ func workerFuncGen(gid string) func() {
 
 				// split transform the commandstring into a actual command
 				args := strings.Fields(commandString)
+				log.Printf("%#v\n", args)
 
 				// executes the command in a goroutine
 				errMessage := "There was an error executing command: " + commandString + " --> %s "
