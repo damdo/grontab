@@ -37,10 +37,12 @@ type jobDetails struct {
 }
 
 // log colors
-var red = color.New(color.FgRed, color.Bold).SprintFunc()
-var yellow = color.New(color.FgYellow, color.Bold).SprintFunc()
-var green = color.New(color.FgGreen, color.Bold).SprintFunc()
-var cyan = color.New(color.FgCyan).SprintFunc()
+var (
+	red    = color.New(color.FgRed, color.Bold).SprintFunc()
+	yellow = color.New(color.FgYellow, color.Bold).SprintFunc()
+	green  = color.New(color.FgGreen, color.Bold).SprintFunc()
+	cyan   = color.New(color.FgCyan).SprintFunc()
+)
 
 // the package-level configuration
 var grontabConfiguration Config
