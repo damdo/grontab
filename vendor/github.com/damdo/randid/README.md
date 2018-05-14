@@ -25,12 +25,12 @@ import "github.com/damdo/randid"
 func foo(){
 
     // generate a default len (32 char) id
-    your32CharLongID := randid.ID()
+    your32CharLongID, err := randid.ID()
     // -> 26e99c11f0a31ec57924c8e2a0712cd3
 
     // or
     desiredLen := 64
-    your64CharLongID := randid.SizedID(desiredLen)
+    your64CharLongID, err := randid.SizedID(desiredLen)
     // -> 6cc77090ff64c232613574bb562510f78d88a84e8351f3a68ac1caa902750bb7
 
 
@@ -38,7 +38,7 @@ func foo(){
     // every id generated from now on with .ID() will be 33 char long
     randid.DefaultLen = 33
 
-    your33CharLongID := randid.ID()
+    your33CharLongID, err := randid.ID()
     // -> 091015d5146b6d2e3f77ff50d805cee50
 
 }

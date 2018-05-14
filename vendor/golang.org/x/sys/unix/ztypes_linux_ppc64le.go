@@ -118,21 +118,6 @@ type Stat_t struct {
 	_       uint64
 }
 
-type Statfs_t struct {
-	Type    int64
-	Bsize   int64
-	Blocks  uint64
-	Bfree   uint64
-	Bavail  uint64
-	Files   uint64
-	Ffree   uint64
-	Fsid    Fsid
-	Namelen int64
-	Frsize  int64
-	Flags   int64
-	Spare   [4]int64
-}
-
 type StatxTimestamp struct {
 	Sec  int64
 	Nsec uint32
@@ -1155,3 +1140,227 @@ type TCPMD5Sig struct {
 	_         uint32
 	Key       [80]uint8
 }
+
+type HDDriveCmdHdr struct {
+	Command uint8
+	Number  uint8
+	Feature uint8
+	Count   uint8
+}
+
+type HDGeometry struct {
+	Heads     uint8
+	Sectors   uint8
+	Cylinders uint16
+	_         [4]byte
+	Start     uint64
+}
+
+type HDDriveID struct {
+	Config         uint16
+	Cyls           uint16
+	Reserved2      uint16
+	Heads          uint16
+	Track_bytes    uint16
+	Sector_bytes   uint16
+	Sectors        uint16
+	Vendor0        uint16
+	Vendor1        uint16
+	Vendor2        uint16
+	Serial_no      [20]uint8
+	Buf_type       uint16
+	Buf_size       uint16
+	Ecc_bytes      uint16
+	Fw_rev         [8]uint8
+	Model          [40]uint8
+	Max_multsect   uint8
+	Vendor3        uint8
+	Dword_io       uint16
+	Vendor4        uint8
+	Capability     uint8
+	Reserved50     uint16
+	Vendor5        uint8
+	TPIO           uint8
+	Vendor6        uint8
+	TDMA           uint8
+	Field_valid    uint16
+	Cur_cyls       uint16
+	Cur_heads      uint16
+	Cur_sectors    uint16
+	Cur_capacity0  uint16
+	Cur_capacity1  uint16
+	Multsect       uint8
+	Multsect_valid uint8
+	Lba_capacity   uint32
+	Dma_1word      uint16
+	Dma_mword      uint16
+	Eide_pio_modes uint16
+	Eide_dma_min   uint16
+	Eide_dma_time  uint16
+	Eide_pio       uint16
+	Eide_pio_iordy uint16
+	Words69_70     [2]uint16
+	Words71_74     [4]uint16
+	Queue_depth    uint16
+	Words76_79     [4]uint16
+	Major_rev_num  uint16
+	Minor_rev_num  uint16
+	Command_set_1  uint16
+	Command_set_2  uint16
+	Cfsse          uint16
+	Cfs_enable_1   uint16
+	Cfs_enable_2   uint16
+	Csf_default    uint16
+	Dma_ultra      uint16
+	Trseuc         uint16
+	TrsEuc         uint16
+	CurAPMvalues   uint16
+	Mprc           uint16
+	Hw_config      uint16
+	Acoustic       uint16
+	Msrqs          uint16
+	Sxfert         uint16
+	Sal            uint16
+	Spg            uint32
+	Lba_capacity_2 uint64
+	Words104_125   [22]uint16
+	Last_lun       uint16
+	Word127        uint16
+	Dlf            uint16
+	Csfo           uint16
+	Words130_155   [26]uint16
+	Word156        uint16
+	Words157_159   [3]uint16
+	Cfa_power      uint16
+	Words161_175   [15]uint16
+	Words176_205   [30]uint16
+	Words206_254   [49]uint16
+	Integrity_word uint16
+}
+
+type Statfs_t struct {
+	Type    int64
+	Bsize   int64
+	Blocks  uint64
+	Bfree   uint64
+	Bavail  uint64
+	Files   uint64
+	Ffree   uint64
+	Fsid    Fsid
+	Namelen int64
+	Frsize  int64
+	Flags   int64
+	Spare   [4]int64
+}
+
+const (
+	ST_MANDLOCK    = 0x40
+	ST_NOATIME     = 0x400
+	ST_NODEV       = 0x4
+	ST_NODIRATIME  = 0x800
+	ST_NOEXEC      = 0x8
+	ST_NOSUID      = 0x2
+	ST_RDONLY      = 0x1
+	ST_RELATIME    = 0x1000
+	ST_SYNCHRONOUS = 0x10
+)
+
+type TpacketHdr struct {
+	Status  uint64
+	Len     uint32
+	Snaplen uint32
+	Mac     uint16
+	Net     uint16
+	Sec     uint32
+	Usec    uint32
+	_       [4]byte
+}
+
+type Tpacket2Hdr struct {
+	Status    uint32
+	Len       uint32
+	Snaplen   uint32
+	Mac       uint16
+	Net       uint16
+	Sec       uint32
+	Nsec      uint32
+	Vlan_tci  uint16
+	Vlan_tpid uint16
+	_         [4]uint8
+}
+
+type Tpacket3Hdr struct {
+	Next_offset uint32
+	Sec         uint32
+	Nsec        uint32
+	Snaplen     uint32
+	Len         uint32
+	Status      uint32
+	Mac         uint16
+	Net         uint16
+	Hv1         TpacketHdrVariant1
+	_           [8]uint8
+}
+
+type TpacketHdrVariant1 struct {
+	Rxhash    uint32
+	Vlan_tci  uint32
+	Vlan_tpid uint16
+	_         uint16
+}
+
+type TpacketBlockDesc struct {
+	Version uint32
+	To_priv uint32
+	Hdr     [40]byte
+}
+
+type TpacketReq struct {
+	Block_size uint32
+	Block_nr   uint32
+	Frame_size uint32
+	Frame_nr   uint32
+}
+
+type TpacketReq3 struct {
+	Block_size       uint32
+	Block_nr         uint32
+	Frame_size       uint32
+	Frame_nr         uint32
+	Retire_blk_tov   uint32
+	Sizeof_priv      uint32
+	Feature_req_word uint32
+}
+
+type TpacketStats struct {
+	Packets uint32
+	Drops   uint32
+}
+
+type TpacketStatsV3 struct {
+	Packets      uint32
+	Drops        uint32
+	Freeze_q_cnt uint32
+}
+
+type TpacketAuxdata struct {
+	Status    uint32
+	Len       uint32
+	Snaplen   uint32
+	Mac       uint16
+	Net       uint16
+	Vlan_tci  uint16
+	Vlan_tpid uint16
+}
+
+const (
+	TPACKET_V1 = 0x0
+	TPACKET_V2 = 0x1
+	TPACKET_V3 = 0x2
+)
+
+const (
+	SizeofTpacketHdr  = 0x20
+	SizeofTpacket2Hdr = 0x20
+	SizeofTpacket3Hdr = 0x30
+)

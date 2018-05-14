@@ -134,7 +134,12 @@ func initialize(config Config) error {
 			}
 
 			worker := workerFuncGen(gid)
-			ugid := fmt.Sprintf("%s", randid.ID())
+			rid, err := randid.ID()
+			if err != nil {
+				return err
+			}
+
+			ugid := fmt.Sprintf("%s", rid)
 			err = c.AddFunc(gid, worker, ugid)
 			if err != nil {
 				log.Println(err)
@@ -168,8 +173,12 @@ func add(jid string, gid string, task jobDetails) (string, error) {
 		worker := workerFuncGen(gid)
 
 		// and add that func to the cron routine
-		ugid := fmt.Sprintf("%s", randid.ID())
-		err := c.AddFunc(gid, worker, ugid)
+		rid, err := randid.ID()
+		if err != nil {
+			return "", err
+		}
+		ugid := fmt.Sprintf("%s", rid)
+		err = c.AddFunc(gid, worker, ugid)
 		if err != nil {
 			return "", errors.Wrap(err, "Error Adding schedule to grontab")
 		}
@@ -191,7 +200,11 @@ func add(jid string, gid string, task jobDetails) (string, error) {
 		// insert the job at its corresponding jid
 		// create a unique jid if not specified
 		if jid == "" {
-			jid = fmt.Sprintf("%s", randid.ID())
+			rid, err := randid.ID()
+			if err != nil {
+				return "", err
+			}
+			jid = fmt.Sprintf("%s", rid)
 		}
 
 		jg[jid] = jobDetails{
@@ -293,7 +306,12 @@ func update(jid string, schedule string, task jobDetails) error {
 		if schedule != gid {
 			// add that func to the cron routine
 			worker := workerFuncGen(schedule)
-			ugid := fmt.Sprintf("%s", randid.ID())
+
+			rid, err := randid.ID()
+			if err != nil {
+				return err
+			}
+			ugid := fmt.Sprintf("%s", rid)
 			c.AddFunc(schedule, worker, ugid)
 
 			// update the ugidTable
@@ -335,12 +353,17 @@ func list() map[string][]Job {
 func workerFuncGen(gid string) func() {
 	// it returns a worker function
 	return func() {
-		jobGroupID := fmt.Sprintf("%s", randid.ID())
+		rid, err := randid.ID()
+		if err != nil {
+			panic(err)
+		}
+
+		jobGroupID := fmt.Sprintf("%s", rid)
 		log.Printf(green("RUNN JG(%s)[%s]"), jobGroupID, gid)
 
 		var jg map[string]jobDetails
 
-		err := db.Get(grontabConfiguration.BucketName, gid, &jg)
+		err = db.Get(grontabConfiguration.BucketName, gid, &jg)
 		if err != nil {
 			log.Panic("Error Putting object in storage\n")
 		}

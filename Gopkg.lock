@@ -11,8 +11,8 @@
     "internal",
     "q"
   ]
-  revision = "a86fa5e09c9c50a06416b08fd9acd4839fb2d62e"
-  version = "v2.1.0"
+  revision = "bda68dab90fc908ee5dbccb36400edf4f54972d6"
+  version = "v2.1.1"
 
 [[projects]]
   name = "github.com/coreos/bbolt"
@@ -24,7 +24,7 @@
   branch = "master"
   name = "github.com/damdo/randid"
   packages = ["."]
-  revision = "48daa354f14e3100cb4aa39ef83208501983fe96"
+  revision = "807a80d6daecea4b8ff649bb601e1c3e2aa69ee2"
 
 [[projects]]
   name = "github.com/fatih/color"
@@ -59,7 +59,7 @@
   branch = "master"
   name = "golang.org/x/sys"
   packages = ["unix"]
-  revision = "3ccc7e5779793fd54564baf60c51bf017955e0ba"
+  revision = "7c87d13f8e835d2fb3a70a2912c811ed0c1d241b"
 
 [solve-meta]
   analyzer-name = "dep"
