@@ -2,6 +2,7 @@ package grontab
 
 import (
 	"fmt"
+	"io/ioutil"
 	"log"
 	"os/exec"
 	"strings"
@@ -21,6 +22,7 @@ type Config struct {
 	PersistencePath    string
 	DisableParallelism bool
 	HideBanner         bool
+	TurnOffLogs        bool
 }
 
 // Job defines a job
@@ -105,6 +107,11 @@ func initialize(config Config) error {
 	// render the banner
 	if !grontabConfiguration.HideBanner {
 		fmt.Printf("%s\n", banner)
+	}
+
+	if grontabConfiguration.TurnOffLogs {
+		log.SetFlags(0)
+		log.SetOutput(ioutil.Discard)
 	}
 
 	var err error
