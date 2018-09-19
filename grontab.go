@@ -70,7 +70,7 @@ func Init(config Config) error {
 	return initialize(config)
 }
 
-// Start starts a the grontab engine
+// Start starts the grontab engine
 func Start() {
 	start()
 }
@@ -93,6 +93,11 @@ func Update(schedule string, job Job) error {
 // List returns a list of the running schedules with their jobs
 func List() map[string][]Job {
 	return list()
+}
+
+// Stop stops the grontab engine
+func Stop() {
+	stop()
 }
 
 // ##################################
@@ -424,6 +429,11 @@ func workerFuncGen(gid string) func() {
 		jobWaitGroup.Wait()
 		log.Printf(green("ENDD JG(%s)[%s]"), jobGroupID, gid)
 	}
+}
+
+func stop() {
+	c.Stop()
+	db.Close()
 }
 
 // return keys of all the elements inside a bucket
