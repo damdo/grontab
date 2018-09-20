@@ -269,33 +269,3 @@ func TestWorkerFuncGen(t *testing.T) {
 	worker := workerFuncGen(timing)
 	worker()
 }
-
-func TestDisabledPallelism(t *testing.T) {
-	cleaningErr := os.Remove("./db.db")
-	if cleaningErr != nil && os.IsExist(cleaningErr) {
-		t.Errorf("Unable to cleanup test env, before test running")
-	}
-
-	Init(Config{BucketName: "jobs", PersistencePath: "./db.db", TurnOffLogs: true, HideBanner: true})
-	Start()
-
-	// get time
-	// set to next sec the schedule of both the jobs
-	// give the jobs 2 sec each one
-	// start a timing counter here
-
-	timing := "*/10 * * * * *"
-	idPing, err := Add(timing, Job{Task: "ping -c 4 8.8.8.8", Enabled: true})
-	if err != nil {
-		log.Println(err)
-	}
-
-	otherSched := "*/10 * * * * *"
-	err = Update(otherSched, Job{ID: idPing, Task: "echo 'ciaone'", Enabled: true})
-	if err != nil {
-		log.Println(err)
-	}
-
-	// stop a timing counter here
-	// if > 4 sec, means parallelism is disabled
-}
