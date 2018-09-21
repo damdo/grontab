@@ -173,6 +173,31 @@ func TestUpdateJob(t *testing.T) {
 
 }
 
+func TestWrongUpdateJob(t *testing.T) {
+
+	cleaningErr := os.Remove("./db.db")
+	if cleaningErr != nil && os.IsExist(cleaningErr) {
+		t.Errorf("Unable to cleanup test env, before test running")
+	}
+
+	Init(Config{BucketName: "jobs", PersistencePath: "./db.db", TurnOffLogs: true, HideBanner: true})
+	Start()
+
+	timing := "*/10 * * * * *"
+	_, err := Add(timing, Job{Task: "ping -c 4 8.8.8.8", Enabled: true})
+	if err != nil {
+		log.Println(err)
+	}
+
+	otherSched := "*/30 * * * * *"
+	err = Update(otherSched, Job{Task: "echo 'ciaone'", Enabled: true})
+	if err != nil {
+		log.Println(err)
+	} else {
+		t.Errorf("expected Update() to throw an error due to missing ID specification")
+	}
+}
+
 func TestRemoveJob(t *testing.T) {
 	cleaningErr := os.Remove("./db.db")
 	if cleaningErr != nil && os.IsExist(cleaningErr) {
