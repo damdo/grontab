@@ -135,6 +135,63 @@ func TestAddMultipleJobs(t *testing.T) {
 
 }
 
+func TestAddMultipleJobsWithoutParallelism(t *testing.T) {
+
+	cleaningErr := os.Remove("./db.db")
+	if cleaningErr != nil && os.IsExist(cleaningErr) {
+		t.Errorf("Unable to cleanup test env, before test running")
+	}
+
+	Init(Config{BucketName: "jobs", PersistencePath: "./db.db", DisableParallelism: true, TurnOffLogs: true, HideBanner: true})
+	Start()
+
+	var ids []string
+
+	id1, err := Add("*/10 * * * * *", Job{Task: "ping -c 4 8.8.8.8", Enabled: true})
+	if err != nil {
+		log.Println(err)
+	}
+	ids = append(ids, id1)
+
+	id2, err := Add("*/20 * * * * *", Job{Task: "ping -c 4 8.8.8.8", Enabled: true})
+	if err != nil {
+		log.Println(err)
+	}
+	ids = append(ids, id2)
+
+	id3, err := Add("*/30 * * * * *", Job{Task: "ping -c 4 8.8.8.8", Enabled: true})
+	if err != nil {
+		log.Println(err)
+	}
+	ids = append(ids, id3)
+
+	grontabMap := List()
+
+	var actualIds []string
+	for _, v := range grontabMap {
+		for _, j := range v {
+			actualIds = append(actualIds, j.ID)
+		}
+	}
+
+	var diff []string
+	m := make(map[string]bool)
+	for _, item := range ids {
+		m[item] = true
+	}
+
+	for _, item := range actualIds {
+		if _, ok := m[item]; !ok {
+			diff = append(diff, item)
+		}
+	}
+
+	if len(diff) != 0 {
+		t.Errorf("expected elements inserted and elements listed to be equal")
+	}
+
+}
+
 func TestUpdateJob(t *testing.T) {
 
 	cleaningErr := os.Remove("./db.db")
