@@ -1,3 +1,9 @@
+<div align="center">
+	<div>
+		<img width="400" src="assets/grontab.svg" alt="grontab">
+	</div>
+</div>
+
 ##  damdo/grontab
 :clock3: :arrows_counterclockwise: lib for parallel & persistent job scheduling and running, like crontab but for Go
 
@@ -25,6 +31,64 @@ Note that the `vendor` folder is here for stability. Remove the folder if you
 already have the dependencies in your GOPATH.
 
 ### Usage
+
+#### tl;dr;
+```go
+package main
+
+import (
+        "log"
+        "os"
+        "os/signal"
+        "github.com/damdo/grontab"
+)
+
+func main() {
+    // create a new grontab configuration
+    newConfig := grontab.Config{
+            BucketName:         "jobs",
+            PersistencePath:    "./db.db",
+            DisableParallelism: false,
+            HideBanner:         false,
+            TurnOffLogs:        false,
+    }
+
+    // initialize grontab with the new configuration
+    err := grontab.Init(newConfig)
+    if err != nil {
+            log.Fatal(err)
+    }
+
+    // create a new grontab job
+    newJob := grontab.Job{Task: "ping -c 4 8.8.8.8", Enabled: true}
+
+    // a new grontab job to be executed at the specified schedule
+    idPing, err := grontab.Add("00 00 06 * * *", newJob)
+    if err != nil {
+            log.Println(err)
+    }
+
+    // start grontab
+    grontab.Start()
+
+    // update the existing idPing job with a new schedule and a new command task
+    err = grontab.Update("*/10 * * * * *", grontab.Job{ID: idPing, Task: "echo 'ciaone'", Enabled: true})
+    if err != nil {
+    	log.Println(err)
+    }
+
+    // // optionally remove the existing job
+    // err = grontab.Remove(idPing)
+    // if err != nil {
+    //     log.Println(err)
+    // }
+
+    // this is needed to keep awake the execution
+    sig := make(chan os.Signal)
+    signal.Notify(sig, os.Interrupt, os.Kill)
+    <-sig
+}
+```
 
 #### 1) import
 the first step is to import the package
@@ -54,7 +118,7 @@ newConfig := grontab.Config{
     PersistencePath: "./db.db",
     DisableParallelism: false,
     HideBanner: false,
-    TurnOffLogs: false
+    TurnOffLogs: false,
 }
 
 err := grontab.Init(newConfig)
@@ -88,6 +152,7 @@ idPing, err := grontab.Add("00 00 06 * * *", newJob)
 if err != nil {
     log.Println(err)
 }
+log.Println(idPing)
 ```
 
 #### 5) grontab.Update()
@@ -140,7 +205,7 @@ if err != nil {
 One of the possibilities after the Init() (and optionally after Start())
 is the *Remove()* command. This command is meant to be used to remove an entry in grontab.
 It takes as parameter:
-1) the id of the job to be removed
+1) `ID` of the job to be removed
 
 ```go
 newJob := grontab.Job{Task: "ping -c 4 8.8.8.8", Enabled: true}
