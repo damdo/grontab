@@ -94,7 +94,7 @@ func main() {
 ```
 
 #### 1) import
-the first step is to import the package
+The first step is to import the package
 ```go
 import(
     "github.com/damdo/grontab"
@@ -103,13 +103,13 @@ import(
 
 #### 2) grontab.Init()
 
-Then grontab has to be initialized, with the Init() command, specifing the desired configuration
-Boolean parameters have default value to false
+Then grontab has to be initialized, with the Init() command, specifing the desired configuration.
+Boolean parameters have default value to false.
 The configuration lives in a `grontab.Config` that takes various parameters:
 
-- *PersistencePath*: will be the path and name of the storage
+- *PersistencePath*: will be the path of the storage file
 - *BucketName*: will be the data collection name
-- *DisableParallelism*: allow to choose if the jobs at the same schedule will run parallel or not
+- *DisableParallelism*: allow to choose if jobs at the same schedule will run in parallel or sequentially
 - *HideBanner*: allow to choose if the grontab banner will be shown at runtime
 - *TurnOffLogs*: allow to choose if the grontab logs will be shown at runtime
 
@@ -133,7 +133,7 @@ if err != nil {
 
 #### 3) grontab.Start()
 The next step can be to spin up the grontab engine to start processing the schedule.
-Start() can be invoked anytime, even after the Add()'s commands, provided that grontab as been Initialized.
+Start(), however, can be invoked at anytime, even after the Add()'s commands, provided that grontab as been Initialized.
 
 ```go
 grontab.Start()
@@ -160,13 +160,13 @@ log.Println(idPing)
 
 #### 5) grontab.Update()
 One of the possibilities after the Init() (and optionally after Start())
-is the *Update()* command. This command is meant to be used to update already present tasks in grontab.
+is the *Update()* command. This command is meant to be used to update tasks already present in grontab.
 It takes as parameters:
 1) optionally an updated crontab like schedule string, [syntax here](https://godoc.org/github.com/robfig/cron#hdr-CRON_Expression_Format)
 2) a `grontab.Job` which takes:
     - `ID`: the id of the job to be updated `string` (MANDATORY)
-    - `Task`: the updated unix command `string` (OPTIONALLY)
-    - `Enabled`: the updated true/false `boolean` flag to enable/disable the execution of the task (OPTIONALLY)
+    - `Task`: the updated unix command `string` (OPTIONAL)
+    - `Enabled`: the updated true/false `boolean` flag to enable/disable the execution of the task (OPTIONAL)
 
 ```go
 newJob := grontab.Job{Task: "ping -c 4 8.8.8.8", Enabled: true}
@@ -224,8 +224,8 @@ if err != nil {
 ```
 
 #### 7) grontab.Stop()
-The *Stop()* command. This command is meant to be used to stop the started grontab engine.
-It should be runned only after Init() and Start() have been invoked.
+The *Stop()* command is meant to be used to stop the started grontab engine.
+It should be run only after Init() and Start() have been invoked.
 
 ```go
 grontab.Stop()
