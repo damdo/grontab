@@ -5,8 +5,9 @@
 </div>
 
 ##  damdo/grontab
-[![Build Status](https://travis-ci.org/damdo/randid.svg?branch=master)](https://travis-ci.org/damdo/randid)
+[![Build Status](https://travis-ci.org/damdo/grontab.svg?branch=master)](https://travis-ci.org/damdo/grontab)
 [![Coverage Status](https://coveralls.io/repos/github/damdo/grontab/badge.svg?branch=master)](https://coveralls.io/github/damdo/grontab?branch=master)
+
 :clock3: :arrows_counterclockwise: lib for parallel & persistent job scheduling and running, like crontab but for Go
 
 **grontab** provides a simple way to time schedule *nix commands the same way we are all accustomed to do in crontab, thanks to the stable `robfig/cron` golang library.
