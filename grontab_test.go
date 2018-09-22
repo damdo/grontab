@@ -7,6 +7,18 @@ import (
 	"testing"
 )
 
+func TestInitNoPath(t *testing.T) {
+	cleaningErr := os.Remove("./db.db")
+	if cleaningErr != nil && os.IsExist(cleaningErr) {
+		t.Errorf("Unable to cleanup test env, before test running")
+	}
+
+	Init(Config{TurnOffLogs: true, HideBanner: true})
+
+	Start()
+
+}
+
 func TestListJob(t *testing.T) {
 	cleaningErr := os.Remove("./db.db")
 	if cleaningErr != nil && os.IsExist(cleaningErr) {
