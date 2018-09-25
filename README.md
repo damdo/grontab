@@ -5,6 +5,7 @@
 </div>
 
 ##  damdo/grontab
+[![GoDoc](http://godoc.org/github.com/damdo/grontab?status.png)](http://godoc.org/github.com/damdo/grontab) 
 [![Build Status](https://travis-ci.org/damdo/grontab.svg?branch=master)](https://travis-ci.org/damdo/grontab)
 [![Coverage Status](https://coveralls.io/repos/github/damdo/grontab/badge.svg?branch=master)](https://coveralls.io/github/damdo/grontab?branch=master)
 
@@ -229,6 +230,14 @@ It should be run only after Init() and Start() have been invoked.
 
 ```go
 grontab.Stop()
+```
+
+#### 8) grontab.List()
+The *List()* command is meant to be used to list the schedules and jobs already in the grontab engine.
+It should be run only after Init() have been invoked.
+
+```go
+occurrencies := grontab.List()
 ```
 
 ### Credits
