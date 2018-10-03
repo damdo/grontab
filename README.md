@@ -5,7 +5,7 @@
 </div>
 
 ##  damdo/grontab
-[![GoDoc](http://godoc.org/github.com/damdo/grontab?status.png)](http://godoc.org/github.com/damdo/grontab) 
+[![GoDoc](http://godoc.org/github.com/damdo/grontab?status.svg)](http://godoc.org/github.com/damdo/grontab) 
 [![Build Status](https://travis-ci.org/damdo/grontab.svg?branch=master)](https://travis-ci.org/damdo/grontab)
 [![Coverage Status](https://coveralls.io/repos/github/damdo/grontab/badge.svg?branch=master)](https://coveralls.io/github/damdo/grontab?branch=master)
 
