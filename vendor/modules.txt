@@ -2,7 +2,7 @@
 ## explicit; go 1.14
 # github.com/Sereal/Sereal v0.0.0-20220131071111-6356df0ce089
 ## explicit
-# github.com/asdine/storm v2.1.1+incompatible
+# github.com/asdine/storm v1.1.1-0.20190808085602-a53b1e41feb9
 ## explicit
 github.com/asdine/storm
 github.com/asdine/storm/codec
@@ -10,11 +10,8 @@ github.com/asdine/storm/codec/json
 github.com/asdine/storm/index
 github.com/asdine/storm/internal
 github.com/asdine/storm/q
-# github.com/coreos/bbolt v1.3.1-coreos.6
-## explicit
-github.com/coreos/bbolt
-# github.com/damdo/randid v0.0.0-20180514195546-807a80d6daec
-## explicit
+# github.com/damdo/randid v0.1.0
+## explicit; go 1.17
 github.com/damdo/randid
 # github.com/fatih/color v1.6.0
 ## explicit
@@ -23,11 +20,11 @@ github.com/fatih/color
 ## explicit; go 1.9
 # github.com/golang/snappy v0.0.4
 ## explicit
-# github.com/mattn/go-colorable v0.0.9
-## explicit
+# github.com/mattn/go-colorable v0.1.11
+## explicit; go 1.13
 github.com/mattn/go-colorable
-# github.com/mattn/go-isatty v0.0.3
-## explicit
+# github.com/mattn/go-isatty v0.0.14
+## explicit; go 1.12
 github.com/mattn/go-isatty
 # github.com/pkg/errors v0.8.0
 ## explicit
@@ -39,8 +36,14 @@ github.com/pkg/errors
 # github.com/wgliang/cron v0.0.0-20180129105837-79834306f643
 ## explicit
 github.com/wgliang/cron
-# golang.org/x/sys v0.0.0-20190215142949-d0b11bdaac8a
-## explicit
+# go.etcd.io/bbolt v1.3.6
+## explicit; go 1.12
+go.etcd.io/bbolt
+# golang.org/x/sys v0.0.0-20211103235746-7861aae1554b
+## explicit; go 1.17
+golang.org/x/sys/internal/unsafeheader
 golang.org/x/sys/unix
 # google.golang.org/appengine v1.6.7
 ## explicit; go 1.11
+# gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b
+## explicit

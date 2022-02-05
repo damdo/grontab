@@ -9,11 +9,11 @@ import (
 	"sync"
 
 	"github.com/asdine/storm"
-	"github.com/coreos/bbolt"
 	"github.com/damdo/randid"
 	"github.com/fatih/color"
 	"github.com/pkg/errors"
 	"github.com/wgliang/cron"
+	bolt "go.etcd.io/bbolt"
 )
 
 // Config defines a package configuration
