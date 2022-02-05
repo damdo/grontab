@@ -8,9 +8,10 @@ import (
 	"io"
 )
 
+// #### EXPORTED
+
 // DefaultLen is the default id length
 var DefaultLen = 32
-var hardLimitLen = 1000000
 
 // ID generates an "defaultLen" long id
 func ID() (string, error) {
@@ -21,6 +22,10 @@ func ID() (string, error) {
 func SizedID(size int) (string, error) {
 	return generate(size)
 }
+
+// #### UNEXPORTED
+
+var hardLimitLen = 1000000
 
 func generate(size int) (string, error) {
 	if size > hardLimitLen {

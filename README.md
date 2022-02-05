@@ -243,7 +243,7 @@ occurrencies := grontab.List()
 ### Credits
 
  * [`@asdine`](https://github.com/asdine) for `github.com/asdine/storm`
- * [`@coreos`](https://github.com/coreos) for `github.com/coreos/bbolt`
+ * [`@etcd-io`](https://github.com/etcd-io) for `github.com/etcd-io/bbolt`
  * [`@damdo`](https://github.com/damdo) for `github.com/damdo/randid`
  * [`@fatih`](https://github.com/fatih) for `github.com/fatih/color`
  * [`@davecheney`](https://github.com/davecheney) for `github.com/pkg/errors`
